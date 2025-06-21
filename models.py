@@ -1,6 +1,33 @@
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
+from sqlalchemy.orm import relationship
+from database import Base
 from pydantic import BaseModel
-from typing import List
 
+class CandidateDB(Base):
+    __tablename__ = "candidates"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    party = Column(String, nullable=False)
+    image = Column(String, nullable=False)
+    description = Column(String, nullable=False)
+    votes = relationship("VoteDB", back_populates="candidate")
+
+class UserDB(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    cnp = Column(String, unique=True, nullable=False, index=True)
+    has_voted = Column(Boolean, default=False)
+    votes = relationship("VoteDB", back_populates="user")
+
+class VoteDB(Base):
+    __tablename__ = "votes"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    candidate_id = Column(Integer, ForeignKey("candidates.id"), nullable=False)
+    user = relationship("UserDB", back_populates="votes")
+    candidate = relationship("CandidateDB", back_populates="votes")
+
+# Pydantic models (for request/response)
 class CandidateBase(BaseModel):
     name: str
     party: str
@@ -12,30 +39,29 @@ class CandidateCreate(CandidateBase):
 
 class Candidate(CandidateBase):
     id: int
+    class Config:
+        from_attributes = True
 
-# In-memory storage with initial data from the frontend
-initial_candidates = [
-    {
-        "id": 1,
-        "name": "Eleanor Vance",
-        "image": "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-        "party": "Innovate Today",
-        "description": "A forward-thinking leader with 15 years of experience in tech and public policy. Advocates for digital transformation and sustainable urban development."
-    },
-    {
-        "id": 2,
-        "name": "Marcus Thorne",
-        "image": "https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-        "party": "People's Union",
-        "description": "A dedicated community organizer focused on social equity and healthcare reform. Believes in strengthening local communities through grassroots initiatives."
-    },
-    {
-        "id": 3,
-        "name": "Isabella Chen",
-        "image": "https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-        "party": "Green Future",
-        "description": "A climate scientist and environmental advocate committed to implementing green policies and protecting natural resources for future generations."
-    }
-]
+class UserBase(BaseModel):
+    cnp: str
 
-candidates: List[Candidate] = [Candidate(**c) for c in initial_candidates] 
+class UserCreate(UserBase):
+    pass
+
+class User(UserBase):
+    id: int
+    has_voted: bool
+    class Config:
+        from_attributes = True
+
+class VoteBase(BaseModel):
+    user_id: int
+    candidate_id: int
+
+class VoteCreate(VoteBase):
+    pass
+
+class Vote(VoteBase):
+    id: int
+    class Config:
+        from_attributes = True 
